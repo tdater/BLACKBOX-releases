@@ -1,0 +1,49 @@
+name: Release APK
+
+# Builds BLACKBOX from the public source repo and publishes the APK as a release here.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version (e.g. 0.1.0)
+        required: true
+        default: "0.1.0"
+      ref:
+        description: Branch, tag or commit of tdater/tdater-BLACKBOX to build
+        required: true
+        default: feat/vertical-slice
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: tdater/tdater-BLACKBOX
+          ref: ${{ inputs.ref }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build APK
+        run: ./gradlew :app:assembleDebug --stacktrace
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk "BLACKBOX-${VERSION}.apk"
+          gh release create "v${VERSION}" "BLACKBOX-${VERSION}.apk" \
+            --repo "${{ github.repository }}" \
+            --title "BLACKBOX ${VERSION}" \
+            --notes "Download **BLACKBOX-${VERSION}.apk** below and open it on your phone. Android 10 or newer. See https://tdater.github.io/BLACKBOX-releases/ for what it does." \
+            --latest
