@@ -7,11 +7,11 @@ on:
       version:
         description: Release version (e.g. 0.1.0)
         required: true
-        default: "0.1.0"
+        default: "0.3.0"
       ref:
         description: Branch, tag or commit of tdater/tdater-BLACKBOX to build
         required: true
-        default: feat/vertical-slice
+        default: feat/universal
 
 permissions:
   contents: write
@@ -41,9 +41,23 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk "BLACKBOX-${VERSION}.apk"
-          gh release create "v${VERSION}" "BLACKBOX-${VERSION}.apk" \
+          # Newer source has two editions (standard, net); older refs build a single debug APK.
+          if [ -f app/build/outputs/apk/standard/debug/app-standard-debug.apk ]; then
+            cp app/build/outputs/apk/standard/debug/app-standard-debug.apk "BLACKBOX-${VERSION}.apk"
+            cp app/build/outputs/apk/net/debug/app-net-debug.apk "BLACKBOX-Net-${VERSION}.apk"
+            FILES="BLACKBOX-${VERSION}.apk BLACKBOX-Net-${VERSION}.apk"
+            NOTES="Download **BLACKBOX-${VERSION}.apk** below and open it on your phone. Android 10 or newer. It never uses the internet.
+
+          **BLACKBOX-Net-${VERSION}.apk** is the optional edition with ping, port check and DNS tools. It is the only one with internet permission and installs alongside the regular app with its own records.
+
+          See https://tdater.github.io/BLACKBOX-releases/ for what it does."
+          else
+            cp app/build/outputs/apk/debug/app-debug.apk "BLACKBOX-${VERSION}.apk"
+            FILES="BLACKBOX-${VERSION}.apk"
+            NOTES="Download **BLACKBOX-${VERSION}.apk** below and open it on your phone. Android 10 or newer. See https://tdater.github.io/BLACKBOX-releases/ for what it does."
+          fi
+          gh release create "v${VERSION}" $FILES \
             --repo "${{ github.repository }}" \
             --title "BLACKBOX ${VERSION}" \
-            --notes "Download **BLACKBOX-${VERSION}.apk** below and open it on your phone. Android 10 or newer. See https://tdater.github.io/BLACKBOX-releases/ for what it does." \
+            --notes "$NOTES" \
             --latest
